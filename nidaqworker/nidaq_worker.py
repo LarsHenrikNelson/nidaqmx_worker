@@ -16,6 +16,7 @@ class TaskSettings(NamedTuple):
     repititions: int
     length: int
     isi: Union[float, int]
+    trigger: str
 
 
 class NIWorker:
@@ -41,6 +42,7 @@ class NIWorker:
         isi: Union[int, float] = 0,
         channels: Union[list, int] = 0,
         task_name: str = "",
+        trigger: str = "",
     ):
         if isinstance(channels, int):
             channels = [channels]
@@ -63,6 +65,7 @@ class NIWorker:
             repititions=repititions,
             length=sine_data.shape[0],
             isi=isi,
+            trigger=trigger,
         )
         self.tasks.append(task)
 
@@ -81,6 +84,7 @@ class NIWorker:
         isi: Union[int, float] = 0,
         channels: Union[list, int] = 0,
         task_name: str = "",
+        trigger: str = "",
     ):
         if isinstance(channels, int):
             channels = [channels]
@@ -98,6 +102,7 @@ class NIWorker:
             repititions=repititions,
             length=ramp_data.shape[0],
             isi=isi,
+            trigger=trigger,
         )
         self.task.append(task)
 
@@ -116,6 +121,7 @@ class NIWorker:
         isi: Union[int, float] = 0,
         channels: Union[list, int] = 0,
         task_name: str = "",
+        trigger: str = "",
     ):
         if isinstance(channels, int):
             channels = [channels]
@@ -132,6 +138,7 @@ class NIWorker:
             repititions=repititions,
             length=ttl_data.shape[0],
             isi=isi,
+            trigger=trigger,
         )
         self.task.append(task)
 
@@ -149,6 +156,11 @@ class NIWorker:
         ni_task.timing.cfg_samp_clk_timing(
             rate=task_settings.fs, samps_per_chan=task_settings.length
         )
+        if task_settings.trigger != "":
+            ni_task.triggers.start_trigger.cfg_dig_edge_start_trig(
+                f"/{self.device}/{task_settings.trigger}"
+            )
+
         outstream = ni_task.out_stream
         outstream = ni_task.out_stream
         writer = AnalogMultiChannelWriter(outstream)
