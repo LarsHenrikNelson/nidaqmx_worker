@@ -1,0 +1,1 @@
+This is a simple python class to create and run sine wave, ramp or analog ttl pulses.
