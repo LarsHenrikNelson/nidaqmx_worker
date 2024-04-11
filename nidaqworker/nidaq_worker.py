@@ -17,6 +17,7 @@ class TaskSettings(NamedTuple):
     length: int
     isi: Union[float, int]
     trigger: str
+    channels: list
 
 
 class NIWorker:
@@ -27,7 +28,9 @@ class NIWorker:
             self.device = Device(self.sys_info.devices.device_names[0])
         else:
             self.device = device_name
-        self.inplace = True
+        self.inplace = inplace
+        self.ni_task = None
+        self.callback = print
 
     def create_sine_task(
         self,
@@ -41,7 +44,7 @@ class NIWorker:
         repititions: int = 1,
         isi: Union[int, float] = 0,
         channels: Union[list, int] = 0,
-        task_name: str = "",
+        task_name: str = "sine",
         trigger: str = "",
     ):
         if isinstance(channels, int):
@@ -54,7 +57,7 @@ class NIWorker:
         sine_curve /= sine_curve.max()
         sine_curve *= v_range
         sine_curve += min_v
-        sine_data = np.zeros((len(channels), (sine_t) * fs))
+        sine_data = np.zeros((len(channels), pulse_t))
         for i in range(len(channels)):
             sine_data[i, offset_t : int(offset_t + samples.size)] = sine_curve
 
@@ -63,9 +66,10 @@ class NIWorker:
             data=sine_data,
             task_name=task_name,
             repititions=repititions,
-            length=sine_data.shape[0],
+            length=sine_data.shape[1],
             isi=isi,
             trigger=trigger,
+            channels=channels,
         )
         self.tasks.append(task)
 
@@ -83,7 +87,7 @@ class NIWorker:
         repititions: int = 1,
         isi: Union[int, float] = 0,
         channels: Union[list, int] = 0,
-        task_name: str = "",
+        task_name: str = "ramp",
         trigger: str = "",
     ):
         if isinstance(channels, int):
@@ -100,11 +104,12 @@ class NIWorker:
             data=ramp_data,
             task_name=task_name,
             repititions=repititions,
-            length=ramp_data.shape[0],
+            length=ramp_data.shape[1],
             isi=isi,
             trigger=trigger,
+            channels=channels,
         )
-        self.task.append(task)
+        self.tasks.append(task)
 
         if not self.inplace:
             return self
@@ -120,7 +125,7 @@ class NIWorker:
         repititions: int = 1,
         isi: Union[int, float] = 0,
         channels: Union[list, int] = 0,
-        task_name: str = "",
+        task_name: str = "ttl",
         trigger: str = "",
     ):
         if isinstance(channels, int):
@@ -136,51 +141,55 @@ class NIWorker:
             data=ttl_data,
             task_name=task_name,
             repititions=repititions,
-            length=ttl_data.shape[0],
+            length=ttl_data.shape[1],
             isi=isi,
             trigger=trigger,
+            channels=channels,
         )
-        self.task.append(task)
+        self.tasks.append(task)
 
         if not self.inplace:
             return self
 
     def run_tasks(self, iti: Union[float, int]):
         for i, task in enumerate(self.tasks):
-            ni_task = nidaqmx.Task(task.task_name)
             if i > 0:
                 time.sleep(iti)
-            self.run_task(ni_task, task)
+            self.callback(f"Running {task.task_name}")
+            self.ni_task = nidaqmx.Task(task.task_name)
+            self.set_ao_channels(task)
+            self.run_task(task)
+            self.callback(f"Finished {task.task_name}")
 
-    def run_task(self, ni_task, task_settings: TaskSettings):
-        ni_task.timing.cfg_samp_clk_timing(
+    def run_task(self, task_settings: TaskSettings):
+        self.ni_task.timing.cfg_samp_clk_timing(
             rate=task_settings.fs, samps_per_chan=task_settings.length
         )
         if task_settings.trigger != "":
-            ni_task.triggers.start_trigger.cfg_dig_edge_start_trig(
+            self.ni_task.triggers.start_trigger.cfg_dig_edge_start_trig(
                 f"/{self.device}/{task_settings.trigger}"
             )
 
-        outstream = ni_task.out_stream
-        outstream = ni_task.out_stream
+        outstream = self.ni_task.out_stream
         writer = AnalogMultiChannelWriter(outstream)
         writer.write_many_sample(task_settings.data)
         if task_settings.repititions == 1:
-            ni_task.start()
-            ni_task.wait_until_done(timeout=WAIT_INFINITELY)
-            ni_task.stop()
+            self.ni_task.start()
+            self.ni_task.wait_until_done(timeout=WAIT_INFINITELY)
+            self.ni_task.stop()
         else:
             for i in range(task_settings.repititions):
                 if i > 0:
                     time.sleep(task_settings.isi)
-                ni_task.start()
-                ni_task.wait_until_done(timeout=WAIT_INFINITELY)
-                ni_task.stop()
-        ni_task.close()
+                self.ni_task.start()
+                self.ni_task.wait_until_done(timeout=WAIT_INFINITELY)
+                self.ni_task.stop()
+        self.ni_task.close()
+        self.ni_task = None
 
-    def set_ao_channels(self, ni_task, task_channels):
-        for i in task_channels:
-            ni_task.ao_channels.add_ao_voltage_chan(f"{self.device}/ao{i}")
+    def set_ao_channels(self, task):
+        for i in task.channels:
+            self.ni_task.ao_channels.add_ao_voltage_chan(f"{self.device}/ao{i}")
 
     def reset_tasks(self):
         self.tasks = []
@@ -188,9 +197,10 @@ class NIWorker:
         if not self.inplace:
             return self
 
-    def available_A0_channels(self):
-        print(self.device.ao_physical_chans.channel_names)
+    def available_ao_channels(self):
+        print(Device(self.device).ao_physical_chans.channel_names)
 
+    @staticmethod
     def available_devices():
         sys_info = System()
         print(sys_info.devices.device_names)
