@@ -1,7 +1,6 @@
 import time
 from typing import NamedTuple, Union
 
-import nidaqmx
 from nidaqmx.constants import WAIT_INFINITELY
 from nidaqmx.stream_writers import AnalogMultiChannelWriter
 from nidaqmx.system import System
@@ -15,7 +14,7 @@ class TaskSettings(NamedTuple):
     task_name: str
     repititions: int
     length: int
-    isi: Union[float, int]
+    isi: Union[float, int, tuple[float, int]]
     trigger: str
     channels: list
 
@@ -113,6 +112,7 @@ class NIWorker:
             length=ttl_data.shape[0],
             isi=isi,
             trigger=trigger,
+            channels=channels,
         )
         self.tasks.append(task)
 
@@ -207,7 +207,7 @@ class NIWorker:
                 else:
                     tm = iti
                 time.sleep(tm)
-            self.run_task(ni_task, task)
+            self.run_task(task)
 
     def run_task(self, task_settings: TaskSettings):
         self.ni_task.timing.cfg_samp_clk_timing(
