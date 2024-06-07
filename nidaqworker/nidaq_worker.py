@@ -1,6 +1,7 @@
 import time
 from typing import NamedTuple, Union
 
+import nidaqmx
 from nidaqmx.constants import WAIT_INFINITELY
 from nidaqmx.stream_writers import AnalogMultiChannelWriter
 from nidaqmx.system import System
@@ -210,6 +211,8 @@ class NIWorker:
             self.run_task(task)
 
     def run_task(self, task_settings: TaskSettings):
+        self.ni_task = nidaqmx.Task(task_settings.task_name)
+        self.set_ao_channels(task_settings)
         self.ni_task.timing.cfg_samp_clk_timing(
             rate=task_settings.fs, samps_per_chan=task_settings.length
         )
