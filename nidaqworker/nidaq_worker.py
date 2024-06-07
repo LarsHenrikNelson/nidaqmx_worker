@@ -198,7 +198,7 @@ class NIWorker:
     def run_tasks(self, iti: Union[float, int, tuple[float, int]]):
         for i, task in enumerate(self.tasks):
             if i > 0:
-                if isinstance(iti):
+                if isinstance(iti, (list, np.ndarray, tuple)):
                     r = iti[1] - iti[0]
                     tm = self.rng.random(
                         size=1,
