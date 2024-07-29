@@ -48,17 +48,20 @@ worker.create_ttl_freq_task(
     f0=7,
     pulse_t=5000,
     ttl_t=3000,
-    ttl_width=3,
+    ttl_width=5,
     offset_t=1000,
-    min_v=1.0,
-    v_range=1,
+    min_v=0.0,
+    v_range=3.0,
     repititions=repititions,
     isi=isi,
     channels=[2, 3],
+    task_name="test"
 )
 
 # %%
-worker.run_tasks(iti=5)
+worker.run_tasks(iti=1)
 
 # %%
 worker.reset_tasks()
+
+# %%

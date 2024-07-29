@@ -90,7 +90,7 @@ class NIWorker:
         repititions: int = 1,
         isi: Union[int, float, tuple[int, float]] = 0,
         channels: Union[list, int] = 0,
-        task_name: str = "",
+        task_name: str = "ttl_freq",
         trigger: str = "",
     ):
         ttl_indexes = np.linspace(
@@ -110,7 +110,7 @@ class NIWorker:
             data=ttl_data,
             task_name=task_name,
             repititions=repititions,
-            length=ttl_data.shape[0],
+            length=ttl_data.shape[1],
             isi=isi,
             trigger=trigger,
             channels=channels,
@@ -198,7 +198,7 @@ class NIWorker:
     def run_tasks(self, iti: Union[float, int, tuple[float, int]]):
         for i, task in enumerate(self.tasks):
             if i > 0:
-                if isinstance(iti):
+                if isinstance(iti, (list, np.ndarray, tuple)):
                     r = iti[1] - iti[0]
                     tm = self.rng.random(
                         size=1,
@@ -224,26 +224,21 @@ class NIWorker:
         outstream = self.ni_task.out_stream
         writer = AnalogMultiChannelWriter(outstream)
         writer.write_many_sample(task_settings.data)
-        if task_settings.repititions == 1:
+        for i in range(task_settings.repititions):
+            if i > 0:
+                if isinstance(task_settings.isi, tuple):
+                    r = task_settings.isi[1] - task_settings.isi[0]
+                    tm = self.rng.random(
+                        size=1,
+                    )[0]
+                    tm *= r
+                    tm += task_settings.isi[0]
+                else:
+                    tm = task_settings.isi
+                time.sleep(tm)
             self.ni_task.start()
             self.ni_task.wait_until_done(timeout=WAIT_INFINITELY)
             self.ni_task.stop()
-        else:
-            for i in range(task_settings.repititions):
-                if i > 0:
-                    if isinstance(task_settings.isi):
-                        r = task_settings.isi[1] - task_settings.isi[0]
-                        tm = self.rng.random(
-                            size=1,
-                        )[0]
-                        tm *= r
-                        tm += task_settings.isi[0]
-                    else:
-                        tm = task_settings.isi
-                    time.sleep(tm)
-                self.ni_task.start()
-                self.ni_task.wait_until_done(timeout=WAIT_INFINITELY)
-                self.ni_task.stop()
         self.ni_task.close()
         self.ni_task = None
 
