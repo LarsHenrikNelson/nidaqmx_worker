@@ -33,6 +33,18 @@ class NIWorker:
         self.callback = print
         self.rng = np.random.default_rng()
 
+    def _iti(self, iti):
+        if isinstance(iti, (list, np.ndarray, tuple)):
+            r = iti[1] - iti[0]
+            tm = self.rng.random(
+                size=1,
+            )
+            tm *= r
+            tm += iti[0]
+        else:
+            tm = iti
+        return tm
+    
     def create_sine_task(
         self,
         fs: int,
@@ -195,20 +207,21 @@ class NIWorker:
         if not self.inplace:
             return self
 
-    def run_tasks(self, iti: Union[float, int, tuple[float, int]]):
-        for i, task in enumerate(self.tasks):
-            if i > 0:
-                if isinstance(iti, (list, np.ndarray, tuple)):
-                    r = iti[1] - iti[0]
-                    tm = self.rng.random(
-                        size=1,
-                    )
-                    tm *= r
-                    tm += iti[0]
-                else:
-                    tm = iti
-                time.sleep(tm)
-            self.run_task(task)
+    def run_tasks(self, iti: Union[float, int, tuple[float, int]], randomize_tasks: bool = False, repeat_tasks: int = 1):
+        indices = np.arange(len(self.tasks))
+        for i in range(repeat_tasks):
+            if randomize_tasks:
+                temp = self.rng.permuted(indices)
+                tasks = [self.tasks[i] for i in temp]
+            else:
+                tasks = self.tasks
+            for i, task in enumerate(tasks):
+                if i > 0:
+                    tm = self._iti(iti)
+                    time.sleep(tm)
+                self.run_task(task)
+            tm = self._iti(iti)
+            time.sleep(tm)
 
     def run_task(self, task_settings: TaskSettings):
         self.ni_task = nidaqmx.Task(task_settings.task_name)
@@ -226,15 +239,7 @@ class NIWorker:
         writer.write_many_sample(task_settings.data)
         for i in range(task_settings.repititions):
             if i > 0:
-                if isinstance(task_settings.isi, tuple):
-                    r = task_settings.isi[1] - task_settings.isi[0]
-                    tm = self.rng.random(
-                        size=1,
-                    )[0]
-                    tm *= r
-                    tm += task_settings.isi[0]
-                else:
-                    tm = task_settings.isi
+                tm = self._iti(task_settings.isi)
                 time.sleep(tm)
             self.ni_task.start()
             self.ni_task.wait_until_done(timeout=WAIT_INFINITELY)
