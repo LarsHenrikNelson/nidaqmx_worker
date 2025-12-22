@@ -11,7 +11,7 @@ from .tasks import AnalogTaskGroup
 
 
 class NIWorker:
-    def __init__(self, device_name=None, seed: int = 42):
+    def __init__(self, device_name: str | None = None, seed: int = 42):
         self.sys_info = System()
         if device_name is None:
             self.device = Device(self.sys_info.devices.device_names[0])
@@ -49,20 +49,23 @@ class NIWorker:
 
     def run_tasks(
         self,
-        tasks: tuple[AnalogTaskGroup, ...] | list[AnalogTaskGroup],
+        tasks: AnalogTaskGroup | tuple[AnalogTaskGroup, ...] | list[AnalogTaskGroup],
         iti: Union[float, int, tuple[float, int]] = 0,
         repeats: int = 1,
+        repeat_iti: Union[float, int, tuple[float, int]] = 0,
         repeat_type: Literal["tile", "repeat", "random"] = "tile",
     ) -> None:
+        if not isinstance(tasks, (tuple, list)):
+            tasks = (tasks,)
         run_tasks = self._create_tasks(tasks, repeats, repeat_type)
         for i, task in enumerate(run_tasks):
-            self.callback(f"Running iteration {i + 1}")
+            self.callback(f"Running iteration {i + 1} for task group: {task.name}")
             for j, subtask in enumerate(task):
                 if j > 0:
                     tm = self._iti(iti)
                     time.sleep(tm)
                 self.run_task(subtask)
-            tm = self._iti(iti)
+            tm = self._iti(repeat_iti)
             time.sleep(tm)
 
     def _iti(self, iti):
