@@ -75,5 +75,8 @@ ramp_task.add_tasks(task1, task2, task3)
 # Task with not break between repeats
 worker.run_tasks(sine_task)
 
+#%%
 # Task with iti of 30 between tasks
-worker.run_tasks((sine_task, ramp_task), iti=30, repeat_type="tile")
+worker.run_tasks((sine_task, ramp_task), repeats=2, iti=10, repeat_type="tile")
+
+# %%
