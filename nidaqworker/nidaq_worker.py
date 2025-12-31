@@ -24,8 +24,8 @@ class NIWorker:
         self.callback = print
         self.rng = np.random.default_rng(seed)
 
-    def available_ao_channels(self):
-        print(Device(self.device).ao_physical_chans.channel_names)
+    def available_ao_channels(self) -> list[str]:
+        return Device(self.device).ao_physical_chans.channel_names
 
     @staticmethod
     def available_devices():
@@ -34,7 +34,7 @@ class NIWorker:
 
     def _create_tasks(self, tasks, repeats, repeat_type):
         if repeat_type == "tile":
-            output_tasks = [tasks for _ in range(repeats)]
+            output_tasks = [list(tasks) for _ in range(repeats)]
         elif repeat_type == "repeat":
             output_tasks = []
             for i in tasks:
@@ -59,7 +59,7 @@ class NIWorker:
             tasks = (tasks,)
         run_tasks = self._create_tasks(tasks, repeats, repeat_type)
         for i, task in enumerate(run_tasks):
-            self.callback(f"Running iteration {i + 1} for task group: {task.name}")
+            self.callback(f"Running iteration {i + 1}")
             for j, subtask in enumerate(task):
                 if j > 0:
                     tm = self._iti(iti)
@@ -82,7 +82,7 @@ class NIWorker:
 
     def run_task(self, task_settings: AnalogTaskGroup):
         ni_task = nidaqmx.Task(task_settings.name)
-        self.callback(f"Running task {task_settings.name}")
+        self.callback(f"Running AnalogTaskGroup: {task_settings.name}")
         self.set_ao_channels(task_settings, ni_task)
         ni_task.timing.cfg_samp_clk_timing(
             rate=task_settings.fs, samps_per_chan=task_settings.length
@@ -103,4 +103,4 @@ class NIWorker:
 
     def set_ao_channels(self, task: AnalogTaskGroup, ni_task):
         for i in task.channels:
-            ni_task.ao_channels.add_ao_voltage_chan(f"{self.device}/ao{i}")
+            ni_task.ao_channels.add_ao_voltage_chan(i)
