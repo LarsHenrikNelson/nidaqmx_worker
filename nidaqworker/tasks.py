@@ -7,7 +7,7 @@ from scipy.signal import chirp
 
 
 @dataclass
-class AnalogTask(ABC):
+class AnalogWaveform(ABC):
     task_name: ClassVar[str]
     channel: str
     offset_t: float | int
@@ -29,31 +29,35 @@ class AnalogTask(ABC):
 @dataclass
 class AnalogTaskGroup:
     fs: float | int
-    task_t: float | int
+    task_t: float | int | None = None
     name: str = ""
     trigger: str = ""
-    tasks: list[AnalogTask] = field(default_factory=list)
+    tasks: list[AnalogWaveform] = field(default_factory=list)
 
-    def _check_channels(self, items: tuple[AnalogTask, ...]):
+    def _check_channels(self, items: tuple[AnalogWaveform, ...]):
         temp = {i.channel for i in items}
         temp2 = {i.channel for i in self.tasks}
         union = temp.union(temp2)
         if len(union) != (len(temp) + len(temp2)):
             raise ValueError("Cannot have multiple tasks on the same channel.")
 
-    def _check_length(self, items: tuple[AnalogTask, ...]):
+    def _check_length(self, items: tuple[AnalogWaveform, ...]):
         temp = [i.signal_t + i.offset_t for i in items]
+        if self.task_t is None:
+            self.task_t = max(temp)
         for i in temp:
             if i > self.task_t:
                 raise ValueError(f"All tasks must be less than {self.task_t}")
 
-    def add_tasks(self, *tasks: AnalogTask):
+    def add_waveforms(self, *tasks: AnalogWaveform):
         self._check_channels(tasks)
         self._check_length(tasks)
         self.tasks.extend(tasks)
 
     @property
     def signal(self):
+        if self.task_t is None:
+            raise ValueError("task_t must be set or tasks must be added")
         signal = np.zeros((len(self.tasks), int(self.task_t * self.fs)))
         for i, task in enumerate(self.tasks):
             signal[i] = task.signal(self.fs, self.task_t)
@@ -61,6 +65,8 @@ class AnalogTaskGroup:
 
     @property
     def length(self):
+        if self.task_t is None:
+            raise ValueError("task_t must be set or tasks must be added")
         return int(self.task_t * self.fs)
 
     @property
@@ -69,18 +75,20 @@ class AnalogTaskGroup:
 
 
 @dataclass(kw_only=True)
-class SineTask(AnalogTask):
+class Sine(AnalogWaveform):
     f0: float | int
     phi: float = np.pi * 3 / 2
     task_name: ClassVar[str] = "sine"
 
-    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
+    def signal(self, fs: float | int, task_t: float | int | None = None) -> np.ndarray:
         samples = self._create_line(self.signal_t, fs)
         sine_curve = np.sin(2 * np.pi * self.f0 * samples + self.phi)
         sine_curve -= sine_curve.min()
         sine_curve /= sine_curve.max()
         sine_curve *= self.max - self.min
         sine_curve += self.min
+        if task_t is None:
+            task_t = self.signal_t + self.offset_t
         sine_data = self._create_zeros(task_t, fs)
         start = int(self.offset_t * fs)
         end = start + int(self.signal_t * fs)
@@ -89,17 +97,19 @@ class SineTask(AnalogTask):
 
 
 @dataclass(kw_only=True)
-class ChirpTask(AnalogTask):
+class Chirp(AnalogWaveform):
     f0: float | int
     f1: float | int
     phi: float = np.pi
     task_name: ClassVar[str] = "chirp"
 
-    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
+    def signal(self, fs: float | int, task_t: float | int | None = None) -> np.ndarray:
         samples = self._create_line(self.signal_t, fs)
         h = chirp(
             samples, f0=self.f0, f1=self.f1, phi=np.rad2deg(self.phi), t1=samples[-1]
         )
+        if task_t is None:
+            task_t = self.signal_t + self.offset_t
         chirp_data = self._create_zeros(task_t, fs)
         h -= h.min()
         h /= h.max()
@@ -112,11 +122,13 @@ class ChirpTask(AnalogTask):
 
 
 @dataclass(kw_only=True)
-class RampTask(AnalogTask):
+class Ramp(AnalogWaveform):
     task_name: ClassVar[str] = "ramp"
 
-    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
+    def signal(self, fs: float | int, task_t: float | int | None = None) -> np.ndarray:
         samples = np.linspace(self.min, self.max, num=int(self.signal_t * fs))
+        if task_t is None:
+            task_t = self.signal_t + self.offset_t
         ramp_data = self._create_zeros(task_t, fs)
         start = int(self.offset_t * fs)
         end = start + int(self.signal_t * fs)
@@ -125,12 +137,12 @@ class RampTask(AnalogTask):
 
 
 @dataclass(kw_only=True)
-class TTLTask(AnalogTask):
+class TTL(AnalogWaveform):
     f0: float | int
     ttl_width: float | int
     task_name: ClassVar[str] = "ttl"
 
-    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
+    def signal(self, fs: float | int, task_t: float | int | None = None) -> np.ndarray:
         num_pulses = int(self.signal_t * self.f0)
         if num_pulses == 0:
             num_pulses = 1
@@ -142,6 +154,8 @@ class TTLTask(AnalogTask):
             dtype=int,
         )
         width = int(self.ttl_width * fs)
+        if task_t is None:
+            task_t = self.signal_t + self.offset_t
         if num_pulses > 1:
             temp = ttl_indexes[-1] - ttl_indexes[0]
             if temp < width:
