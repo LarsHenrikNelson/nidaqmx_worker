@@ -57,8 +57,8 @@ sine_task.add_waveforms(task1, task2, task3)
 # %%
 # Ramp task with TTL task for identification
 ramp_task = AnalogTaskGroup(fs, task_t, "ramp_task")
-task1 = task3 = Ramp(channel=channels[0], offset_t=1, signal_t=2, min=1)
-task2 = task3 = Ramp(channel=channels[1], offset_t=1, signal_t=2, min=1)
+task1 = Ramp(channel=channels[0], offset_t=1, signal_t=2, min=1)
+task2 = Ramp(channel=channels[1], offset_t=1, signal_t=2, min=1)
 task3 = TTL(
     f0=2,
     channel=channels[2],
