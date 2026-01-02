@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 import numpy as np
+from scipy.signal import chirp
 
 
 @dataclass
@@ -85,6 +86,29 @@ class SineTask(AnalogTask):
         end = start + int(self.signal_t * fs)
         sine_data[start:end] = sine_curve
         return sine_data
+
+
+@dataclass(kw_only=True)
+class ChirpTask(AnalogTask):
+    f0: float | int
+    f1: float | int
+    phi: float = np.pi
+    task_name: ClassVar[str] = "chirp"
+
+    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
+        samples = self._create_line(self.signal_t, fs)
+        h = chirp(
+            samples, f0=self.f0, f1=self.f1, phi=np.rad2deg(self.phi), t1=samples[-1]
+        )
+        chirp_data = self._create_zeros(task_t, fs)
+        h -= h.min()
+        h /= h.max()
+        h *= self.max - self.min
+        h += self.min
+        start = int(self.offset_t * fs)
+        end = start + int(self.signal_t * fs)
+        chirp_data[start:end] = h
+        return chirp_data
 
 
 @dataclass(kw_only=True)

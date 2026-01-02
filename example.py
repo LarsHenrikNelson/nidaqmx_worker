@@ -1,8 +1,14 @@
 # %%
-from nidaqworker import NIWorker, AnalogTaskGroup, SineTask, RampTask, TTLTask
+from nidaqworker import (
+    NIWorker,
+    AnalogTaskGroup,
+    SineTask,
+    RampTask,
+    TTLTask,
+    ChirpTask,
+)
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import chirp
 
 # %%
 NIWorker.available_devices()
@@ -22,6 +28,7 @@ task1 = SineTask(f0=7, channel=channels[0], offset_t=1, signal_t=2, min=1)
 sig = task1.signal(fs, task_t)
 plt.plot(np.arange(sig.size) / 1000, sig)
 
+
 # %%
 task2 = TTLTask(
     f0=7, channel=channels[1], offset_t=0, signal_t=4, min=1, ttl_width=0.002
@@ -32,6 +39,11 @@ plt.plot(np.arange(sig.size) / 1000, sig)
 # %%
 task3 = RampTask(channel=channels[2], offset_t=1, signal_t=2, min=1)
 sig = task3.signal(fs, task_t)
+plt.plot(np.arange(sig.size) / 1000, sig)
+
+# %%
+task4 = ChirpTask(f0=0.2, f1=20, channel=channels[0], offset_t=1, signal_t=2, min=1)
+sig = task4.signal(fs, task_t)
 plt.plot(np.arange(sig.size) / 1000, sig)
 
 # %%
