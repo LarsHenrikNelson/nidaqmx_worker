@@ -1,2 +1,3 @@
 from .nidaq_worker import NIWorker
-from .tasks import AnalogTaskGroup, SineTask, RampTask, TTLTask, ChirpTask
+from .tasks import AnalogTaskGroup
+from . import waveforms
