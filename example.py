@@ -49,14 +49,15 @@ plt.plot(np.arange(sig.size) / 1000, sig)
 # %%
 # Sine task on two channels with a TTL task for indentification
 sine_task = AnalogTaskGroup(fs, task_t, "sine_task")
-task1 = SineTask(f0=7, channel=channels[0], offset_t=1, signal_t=2, min=1)
-task2 = SineTask(f0=7, channel=channels[1], offset_t=1, signal_t=2, min=1)
+task1 = SineTask(f0=7, channel=channels[0], offset_t=1, signal_t=2, min=1, max=3)
+task2 = SineTask(f0=7, channel=channels[1], offset_t=1, signal_t=2, min=1, max=3)
 task3 = TTLTask(
     f0=1,
     channel=channels[2],
     offset_t=0,
     signal_t=4,
     min=1,
+    max=3,
     ttl_width=0.002,
 )
 # Tasks to task group
@@ -65,15 +66,16 @@ sine_task.add_tasks(task1, task2, task3)
 # %%
 # Ramp task with TTL task for identification
 ramp_task = AnalogTaskGroup(fs, task_t, "ramp_task")
-task1 = task3 = RampTask(channel=channels[0], offset_t=1, signal_t=2, min=1)
-task2 = task3 = RampTask(channel=channels[1], offset_t=1, signal_t=2, min=1)
+task1 = RampTask(channel=channels[0], offset_t=1, signal_t=2, min=1, max=3)
+task2 = RampTask(channel=channels[1], offset_t=1, signal_t=2, min=1, max=3)
 task3 = TTLTask(
     f0=2,
     channel=channels[2],
     offset_t=0,
     signal_t=4,
     min=1,
-    ttl_width=0.002,
+    max=3,
+    ttl_width=0.002
 )
 # Tasks to task group
 ramp_task.add_tasks(task1, task2, task3)
