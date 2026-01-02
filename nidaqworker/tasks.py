@@ -11,8 +11,8 @@ class AnalogTask(ABC):
     channel: str
     offset_t: float | int
     signal_t: float | int
-    max_v: float | int = 5
-    min_v: float | int = -5
+    max: float | int = 5
+    min: float | int = -5
     trigger: str = ""
 
     @abstractmethod
@@ -70,15 +70,16 @@ class AnalogTaskGroup:
 @dataclass(kw_only=True)
 class SineTask(AnalogTask):
     f0: float | int
+    phi: float = np.pi * 3 / 2
     task_name: ClassVar[str] = "sine"
 
     def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
         samples = self._create_line(self.signal_t, fs)
-        sine_curve = np.sin(2 * np.pi * self.f0 * samples + (np.pi * 3 / 2))
+        sine_curve = np.sin(2 * np.pi * self.f0 * samples + self.phi)
         sine_curve -= sine_curve.min()
         sine_curve /= sine_curve.max()
-        sine_curve *= self.max_v - self.min_v
-        sine_curve += self.min_v
+        sine_curve *= self.max - self.min
+        sine_curve += self.min
         sine_data = self._create_zeros(task_t, fs)
         start = int(self.offset_t * fs)
         end = start + int(self.signal_t * fs)
@@ -91,7 +92,7 @@ class RampTask(AnalogTask):
     task_name: ClassVar[str] = "ramp"
 
     def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
-        samples = np.linspace(self.min_v, self.max_v, num=int(self.signal_t * fs))
+        samples = np.linspace(self.min, self.max, num=int(self.signal_t * fs))
         ramp_data = self._create_zeros(task_t, fs)
         start = int(self.offset_t * fs)
         end = start + int(self.signal_t * fs)
@@ -128,11 +129,11 @@ class TTLTask(AnalogTask):
         ttl_indexes += int(self.offset_t * fs)
         for i in ttl_indexes:
             if int(i + width) < ttl_data.size:
-                ttl_data[int(i) : int(i + width)] = self.max_v - self.min_v
+                ttl_data[int(i) : int(i + width)] = self.max - self.min
             else:
                 raise ValueError("TTL pulse is longer than task_t.")
         start = int(self.offset_t * fs)
         end = start + int(self.signal_t * fs)
-        ttl_data[start:end] += self.min_v
+        ttl_data[start:end] += self.min
 
         return ttl_data
