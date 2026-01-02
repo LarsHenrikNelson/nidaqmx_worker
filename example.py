@@ -1,12 +1,6 @@
 # %%
-from nidaqworker import (
-    NIWorker,
-    AnalogTaskGroup,
-    Sine,
-    Ramp,
-    TTL,
-    Chirp,
-)
+from nidaqworker import NIWorker, AnalogTaskGroup
+from nidaqworker.waveforms import Sine, Ramp, TTL, Chirp
 import matplotlib.pyplot as plt
 import numpy as np
 
