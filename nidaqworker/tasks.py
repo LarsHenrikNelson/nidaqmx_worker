@@ -72,7 +72,7 @@ class SineTask(AnalogTask):
     f0: float | int
     task_name: ClassVar[str] = "sine"
 
-    def signal(self, fs: float | int, task_t: float | int):
+    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
         samples = self._create_line(self.signal_t, fs)
         sine_curve = np.sin(2 * np.pi * self.f0 * samples + (np.pi * 3 / 2))
         sine_curve -= sine_curve.min()
@@ -90,7 +90,7 @@ class SineTask(AnalogTask):
 class RampTask(AnalogTask):
     task_name: ClassVar[str] = "ramp"
 
-    def signal(self, fs: float | int, task_t: float | int):
+    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
         samples = np.linspace(self.min_v, self.max_v, num=int(self.signal_t * fs))
         ramp_data = self._create_zeros(task_t, fs)
         start = int(self.offset_t * fs)
@@ -103,9 +103,9 @@ class RampTask(AnalogTask):
 class TTLTask(AnalogTask):
     f0: float | int
     ttl_width: float | int
-    task_name: ClassVar[str] = "sine"
+    task_name: ClassVar[str] = "ttl"
 
-    def signal(self, fs: float | int, task_t: float | int):
+    def signal(self, fs: float | int, task_t: float | int) -> np.ndarray:
         num_pulses = int(self.signal_t * self.f0)
         if num_pulses == 0:
             num_pulses = 1

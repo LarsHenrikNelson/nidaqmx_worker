@@ -1,1 +1,2 @@
-from .nidaq_worker import NIWorker  # noqa:F401
+from .nidaq_worker import NIWorker
+from .tasks import AnalogTaskGroup, SineTask, RampTask, TTLTask
